@@ -43,13 +43,34 @@
     }
 
     .field {
-      border: 1px solid #ddd;
+      border: 1px solid #ccc;
       box-sizing: border-box;
       position: relative;
+      background: #e0e0e0;
     }
 
+    /* Hauptlaufweg: weiße Felder */
     .field.main {
-      background: #eee;
+      background: #ffffff;
+    }
+
+    /* Finale Reihe: schwarze Felder */
+    .field.goal {
+      background: #000000;
+    }
+
+    /* Startbereiche in den Ecken, farbig wie bekannt */
+    .field.home-red {
+      background: #ffaaaa;
+    }
+    .field.home-blue {
+      background: #aaaaff;
+    }
+    .field.home-green {
+      background: #aaffaa;
+    }
+    .field.home-yellow {
+      background: #fff3aa;
     }
 
     .piece {
@@ -63,10 +84,10 @@
       box-sizing: border-box;
     }
 
-    .red   { background: #ff4d4d; }
-    .blue  { background: #4d79ff; }
-    .green { background: #4dff4d; }
-    .yellow{ background: #ffd84d; }
+    .red   { background: #ff0000; }
+    .blue  { background: #0000ff; }
+    .green { background: #00aa00; }
+    .yellow{ background: #ffcc00; }
 
     #info {
       margin-top: 10px;
@@ -121,22 +142,21 @@
   </div>
 
   <script>
-    // Sehr vereinfachtes Mensch-ärgere-dich-nicht:
-    // 4 Spieler, je 4 Figuren, alle ziehen auf derselben Gerät.
-    // Kein exakt offizielles Layout, aber ähnliche Logik.
-
     const boardEl = document.getElementById('board');
     const currentPlayerLabel = document.getElementById('currentPlayerLabel');
     const diceResultEl = document.getElementById('diceResult');
     const rollDiceBtn = document.getElementById('rollDiceBtn');
     const restartBtn = document.getElementById('restartBtn');
 
-    const players = ['red', 'blue', 'green', 'yellow'];
+    const players = ['blue', 'green', 'yellow', 'red']; // Reihenfolge der Spieler
     let currentPlayerIndex = 0;
     let dice = null;
     let fields = []; // 11x11
     let pieces = {};
     let path = [];   // Hauptlaufweg
+    let goalSegment = []; // finale Reihe (schwarze Felder)
+
+    function idx(r, c) { return r * 11 + c; }
 
     function createBoard() {
       boardEl.innerHTML = '';
@@ -148,22 +168,43 @@
         fields.push(div);
       }
 
-      // Ein sehr einfacher, rechteckiger Pfad: außen im Quadrat
-      // Indizes der 11x11 Felder:
-      // Reihe r, Spalte c -> index = r*11 + c
-      function idx(r, c) { return r * 11 + c; }
-
+      // Hauptweg: ein Rechteck außen herum (wie ein Ring)
       path = [];
       // oben links nach rechts
       for (let c = 0; c < 11; c++) path.push(idx(0, c));
-      // rechts oben nach unten (ohne Ecke doppeln)
+      // rechts oben nach unten
       for (let r = 1; r < 11; r++) path.push(idx(r, 10));
       // unten rechts nach links
       for (let c = 9; c >= 0; c--) path.push(idx(10, c));
       // links unten nach oben
       for (let r = 9; r > 0; r--) path.push(idx(r, 0));
 
+      // Markiere Hauptweg als weiße Felder
       path.forEach(i => fields[i].classList.add('main'));
+
+      // Finale Reihe: die letzten 4 Felder des Weges werden schwarz
+      goalSegment = path.slice(-4);
+      goalSegment.forEach(i => {
+        fields[i].classList.add('goal');
+      });
+
+      // Startbereiche farbig wie beim klassischen Brett
+      // oben links (rot)
+      [idx(1,1), idx(1,2), idx(2,1), idx(2,2)].forEach(i => {
+        fields[i].classList.add('home-red');
+      });
+      // oben rechts (blau)
+      [idx(1,8), idx(1,9), idx(2,8), idx(2,9)].forEach(i => {
+        fields[i].classList.add('home-blue');
+      });
+      // unten links (grün)
+      [idx(8,1), idx(8,2), idx(9,1), idx(9,2)].forEach(i => {
+        fields[i].classList.add('home-green');
+      });
+      // unten rechts (gelb)
+      [idx(8,8), idx(8,9), idx(9,8), idx(9,9)].forEach(i => {
+        fields[i].classList.add('home-yellow');
+      });
     }
 
     function initPieces() {
@@ -172,7 +213,7 @@
         pieces[color] = [];
         for (let i = 0; i < 4; i++) {
           pieces[color].push({
-            position: -1, // -1 = Start (Haus), >=0 = Index im path, >= path.length = im Ziel (vereinfacht)
+            position: -1, // -1 = Start (Haus), >=0 = Index im path, > path.length-1 = im „Ziel“ (aus dem Spiel)
             element: null
           });
         }
@@ -231,23 +272,29 @@
       if (!dice) return; // erst würfeln
 
       const p = pieces[color][index];
+
       // Sehr vereinfachte Logik:
-      // - Wenn Figur im Haus (-1) und Wurf >= 1: Figur auf Startfeld setzen
-      // - Sonst: Ziehen um 'dice' Felder, ggf. gegnerische Figur schlagen
+      // - Wenn Figur im Haus (-1) und Wurf >= 1: Figur auf Startfeld
+      // - Sonst: Ziehen um 'dice' Felder, ggf. schlagen
       if (p.position === -1) {
         p.position = startIndexFor(color);
       } else {
         p.position += dice;
-        if (p.position >= path.length) {
-          p.position = path.length; // "im Ziel", wir halten es einfach
+        if (p.position > path.length) {
+          // Figur ist komplett im "Ziel" verschwunden
+          p.position = path.length + 1;
         }
       }
 
-      // Gegner schlagen, wenn auf gleichem Feld
+      // Gegner schlagen, wenn auf gleichem Feld des Weges
       players.forEach(col => {
         if (col === color) return;
         pieces[col].forEach(other => {
-          if (other.position === p.position && p.position < path.length && p.position >= 0) {
+          if (
+            other.position === p.position &&
+            p.position < path.length &&
+            p.position >= 0
+          ) {
             other.position = -1; // zurück ins Haus
           }
         });
@@ -266,17 +313,17 @@
     }
 
     function startIndexFor(color) {
-      // Einfach vier Startpositionen an verschiedenen Stellen auf dem Pfad
-      if (color === 'red')   return 0;
-      if (color === 'blue')  return Math.floor(path.length * 0.25);
-      if (color === 'green') return Math.floor(path.length * 0.5);
-      if (color === 'yellow')return Math.floor(path.length * 0.75);
+      // Startpositionen auf dem Ring (ungefähr vor den farbigen Ecken)
+      if (color === 'red')   return 0;                            // oben links
+      if (color === 'blue')  return Math.floor(path.length * 0.25); // oben rechts
+      if (color === 'yellow')return Math.floor(path.length * 0.5);  // unten rechts
+      if (color === 'green') return Math.floor(path.length * 0.75); // unten links
       return 0;
     }
 
     function checkWin(color) {
-      // Einfach: gewonnen, wenn alle Figuren am Ende des Pfads oder darüber
-      return pieces[color].every(p => p.position >= path.length);
+      // Gewonnen, wenn alle Figuren über das letzte Feld hinaus sind
+      return pieces[color].every(p => p.position > path.length);
     }
 
     function restart() {
@@ -306,3 +353,4 @@
   </script>
 </body>
 </html>
+

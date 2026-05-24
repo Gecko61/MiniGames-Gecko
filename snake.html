@@ -40,8 +40,15 @@
       max-font-size: 18px;
     }
 
-    button {
+    .buttons {
       margin-top: 10px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    button {
       padding: 10px 18px;
       border: none;
       border-radius: 5px;
@@ -56,13 +63,27 @@
       background: #008ba3;
     }
 
-    .buttons {
-      display: flex;
-      flex-direction: row;
-      gap: 10px;
-      flex-wrap: wrap;
-      justify-content: center;
-      margin-top: 5px;
+    /* On-Screen-Steuerkreuz */
+    .controls {
+      margin-top: 15px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      gap: 5px;
+      width: 50vw;
+      max-width: 220px;
+    }
+
+    .controls button {
+      padding: 12px;
+      font-size: 5vw;
+      max-font-size: 20px;
+    }
+
+    .controls .empty {
+      background: transparent;
+      border: none;
+      cursor: default;
     }
   </style>
 </head>
@@ -70,12 +91,28 @@
   <h1>Snake</h1>
   <canvas id="game"></canvas>
   <div id="info">
-    Mit den Pfeiltasten steuern (am Handy: Bildschirm drehen & On-Screen-Tasten).<br>
+    Steuerung: Pfeiltasten oder die Buttons unten.<br>
     Punkte: <span id="score">0</span>
   </div>
+
   <div class="buttons">
     <button id="restartBtn">Neustarten</button>
     <button onclick="location.href='index.html'">Zurück zur Auswahl</button>
+  </div>
+
+  <!-- On-Screen-Steuerung für Handy -->
+  <div class="controls">
+    <div class="empty"></div>
+    <button id="btnUp">▲</button>
+    <div class="empty"></div>
+
+    <button id="btnLeft">◀</button>
+    <div class="empty"></div>
+    <button id="btnRight">▶</button>
+
+    <div class="empty"></div>
+    <button id="btnDown">▼</button>
+    <div class="empty"></div>
   </div>
 
   <script>
@@ -83,6 +120,11 @@
     const ctx = canvas.getContext('2d');
     const scoreEl = document.getElementById('score');
     const restartBtn = document.getElementById('restartBtn');
+
+    const btnUp = document.getElementById('btnUp');
+    const btnDown = document.getElementById('btnDown');
+    const btnLeft = document.getElementById('btnLeft');
+    const btnRight = document.getElementById('btnRight');
 
     // Spielfeld-Größe in Zellen (z.B. 20x20)
     const cells = 20;
@@ -92,7 +134,6 @@
 
     // Canvas-Größe an die aktuelle Breite anpassen
     function resizeCanvas() {
-      // Breite aus CSS übernehmen
       const width = canvas.clientWidth;
       canvas.width = width;
       cellSize = Math.floor(width / cells);
@@ -190,22 +231,53 @@
       draw();
     }
 
-    // Tastatur-Steuerung (PC / externe Tastatur)
-    window.addEventListener('keydown', (e) => {
-      if (e.key === 'ArrowUp' && direction.y !== 1) {
+    function setDirection(dir) {
+      // Keine direkte Umkehr erlauben
+      if (dir === 'up' && direction.y !== 1) {
         nextDirection = { x: 0, y: -1 };
-      } else if (e.key === 'ArrowDown' && direction.y !== -1) {
+      } else if (dir === 'down' && direction.y !== -1) {
         nextDirection = { x: 0, y: 1 };
-      } else if (e.key === 'ArrowLeft' && direction.x !== 1) {
+      } else if (dir === 'left' && direction.x !== 1) {
         nextDirection = { x: -1, y: 0 };
-      } else if (e.key === 'ArrowRight' && direction.x !== -1) {
+      } else if (dir === 'right' && direction.x !== -1) {
         nextDirection = { x: 1, y: 0 };
       }
+    }
+
+    // Tastatur-Steuerung (PC / externe Tastatur)
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowUp') {
+        setDirection('up');
+      } else if (e.key === 'ArrowDown') {
+        setDirection('down');
+      } else if (e.key === 'ArrowLeft') {
+        setDirection('left');
+      } else if (e.key === 'ArrowRight') {
+        setDirection('right');
+      }
+    });
+
+    // On-Screen-Steuerung (Buttons) – auch touchfreundlich
+    btnUp.addEventListener('click', (e) => {
+      e.preventDefault();
+      setDirection('up');
+    });
+    btnDown.addEventListener('click', (e) => {
+      e.preventDefault();
+      setDirection('down');
+    });
+    btnLeft.addEventListener('click', (e) => {
+      e.preventDefault();
+      setDirection('left');
+    });
+    btnRight.addEventListener('click', (e) => {
+      e.preventDefault();
+      setDirection('right');
     });
 
     // Bei Drehung / Größenänderung des Bildschirms neu berechnen
     window.addEventListener('resize', () => {
-      // aktuelle Positionen skalieren (einfachste Variante: neu starten)
+      // einfache Lösung: neu starten
       init();
     });
 

@@ -40,9 +40,16 @@
       max-font-size: 18px;
     }
 
-    button {
+    .buttons {
       margin-top: 10px;
-      padding: 10px 18px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    button {
+      padding: 8px 14px;
       border: none;
       border-radius: 5px;
       background: #00bcd4;
@@ -56,13 +63,27 @@
       background: #008ba3;
     }
 
-    .buttons {
-      display: flex;
-      flex-direction: row;
-      gap: 10px;
-      flex-wrap: wrap;
-      justify-content: center;
-      margin-top: 5px;
+    /* On-Screen-Steuerkreuz */
+    .controls {
+      margin-top: 15px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      gap: 5px;
+      width: 50vw;
+      max-width: 220px;
+    }
+
+    .controls button {
+      padding: 12px;
+      font-size: 5vw;
+      max-font-size: 20px;
+    }
+
+    .controls .empty {
+      background: transparent;
+      border: none;
+      cursor: default;
     }
   </style>
 </head>
@@ -70,7 +91,7 @@
   <h1>Tetris</h1>
   <canvas id="tetris"></canvas>
   <div id="info">
-    Steuern: Pfeiltasten (links/rechts/unten, oben = drehen).<br>
+    Steuern: Pfeiltasten (links/rechts/unten, oben = drehen) oder Buttons.<br>
     Punkte: <span id="score">0</span>
   </div>
   <div class="buttons">
@@ -78,11 +99,31 @@
     <button onclick="location.href='index.html'">Zurück zur Auswahl</button>
   </div>
 
+  <!-- On-Screen-Steuerung für Handy -->
+  <div class="controls">
+    <div class="empty"></div>
+    <button id="btnRotate">⟳</button>
+    <div class="empty"></div>
+
+    <button id="btnLeft">◀</button>
+    <div class="empty"></div>
+    <button id="btnRight">▶</button>
+
+    <div class="empty"></div>
+    <button id="btnDown">▼</button>
+    <div class="empty"></div>
+  </div>
+
   <script>
     const canvas = document.getElementById('tetris');
     const ctx = canvas.getContext('2d');
     const scoreEl = document.getElementById('score');
     const restartBtn = document.getElementById('restartBtn');
+
+    const btnLeft = document.getElementById('btnLeft');
+    const btnRight = document.getElementById('btnRight');
+    const btnDown = document.getElementById('btnDown');
+    const btnRotate = document.getElementById('btnRotate');
 
     const cols = 10;
     const rows = 20;
@@ -216,6 +257,7 @@
     }
 
     function playerDrop() {
+      if (gameOver) return;
       player.pos.y++;
       if (collide(arena, player)) {
         player.pos.y--;
@@ -228,6 +270,7 @@
     }
 
     function playerMove(offset) {
+      if (gameOver) return;
       player.pos.x += offset;
       if (collide(arena, player)) {
         player.pos.x -= offset;
@@ -235,6 +278,7 @@
     }
 
     function playerRotate(dir) {
+      if (gameOver) return;
       const pos = player.pos.x;
       let offset = 1;
       rotate(player.matrix, dir);
@@ -330,6 +374,7 @@
       updateScore();
     }
 
+    // Tastatur-Steuerung
     document.addEventListener('keydown', event => {
       if (event.key === 'ArrowLeft') {
         playerMove(-1);
@@ -342,12 +387,30 @@
       }
     });
 
+    // On-Screen-Steuerung
+    btnLeft.addEventListener('click', (e) => {
+      e.preventDefault();
+      playerMove(-1);
+    });
+    btnRight.addEventListener('click', (e) => {
+      e.preventDefault();
+      playerMove(1);
+    });
+    btnDown.addEventListener('click', (e) => {
+      e.preventDefault();
+      playerDrop();
+    });
+    btnRotate.addEventListener('click', (e) => {
+      e.preventDefault();
+      playerRotate(1);
+    });
+
     restartBtn.addEventListener('click', () => {
       init();
     });
 
     window.addEventListener('resize', () => {
-      // Einfachste Variante: bei Größenänderung neu starten
+      // einfache Variante: bei Größenänderung neu starten
       init();
     });
 
