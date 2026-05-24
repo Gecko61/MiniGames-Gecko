@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tic Tac Toe</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background-color: #f4f4f4;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 10px;
+      box-sizing: border-box;
+    }
+
+    h1 {
+      margin-bottom: 20px;
+      font-size: 6vw;
+      max-font-size: 28px;
+    }
+
+    #board {
+      display: grid;
+      /* passt sich der Bildschirmbreite an */
+      grid-template-columns: repeat(3, minmax(70px, 20vw));
+      grid-template-rows: repeat(3, minmax(70px, 20vw));
+      gap: 5px;
+    }
+
+    .cell {
+      background-color: #fff;
+      border: 2px solid #000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 8vw;  /* Schrift skaliert mit Breite */
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .cell:hover {
+      background-color: #ddd;
+    }
+
+    #message {
+      margin-top: 15px;
+      font-size: 4vw;
+      max-font-size: 18px;
+    }
+
+    .buttons {
+      margin-top: 15px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    button {
+      padding: 10px 18px;
+      font-size: 4vw;
+      max-font-size: 18px;
+      background-color: #007bff;
+      color: #fff;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+  </style>
+</head>
+<body>
+  <h1>Tic Tac Toe</h1>
+  <div id="board"></div>
+  <div id="message"></div>
+  <div class="buttons">
+    <button id="restartBtn">Neustarten</button>
+    <button onclick="location.href='index.html'">Zurück zur Auswahl</button>
+  </div>
+
+  <script>
+    const board = document.getElementById('board');
+    const message = document.getElementById('message');
+    const restartBtn = document.getElementById('restartBtn');
+    let cells = [];
+    let currentPlayer = 'X';
+    let gameActive = true;
+
+    const winningCombinations = [
+      [0, 1, 2],
+      [3, 4, 5],
+      [6, 7, 8],
+      [0, 3, 6],
+      [1, 4, 7],
+      [2, 5, 8],
+      [0, 4, 8],
+      [2, 4, 6],
+    ];
+
+    function startGame() {
+      board.innerHTML = '';
+      currentPlayer = 'X';
+      message.textContent = `Spieler ${currentPlayer} ist am Zug.`;
+      gameActive = true;
+      cells = [];
+
+      for (let i = 0; i < 9; i++) {
+        const cell = document.createElement('div');
+        cell.classList.add('cell');
+        cell.dataset.index = i;
+        cell.addEventListener('click', handleClick, { once: true });
+        board.appendChild(cell);
+        cells.push(cell);
+      }
+    }
+
+    function handleClick(e) {
+      const cell = e.target;
+
+      if (!gameActive || cell.textContent) return;
+
+      cell.textContent = currentPlayer;
+      checkWinner();
+    }
+
+    function checkWinner() {
+      const boardValues = cells.map((cell) => cell.textContent || '');
+
+      for (const combo of winningCombinations) {
+        const [a, b, c] = combo;
+        if (
+          boardValues[a] &&
+          boardValues[a] === boardValues[b] &&
+          boardValues[a] === boardValues[c]
+        ) {
+          message.textContent = `Spieler ${currentPlayer} hat gewonnen!`;
+          gameActive = false;
+          return;
+        }
+      }
+
+      if (!boardValues.includes('')) {
+        message.textContent = 'Unentschieden!';
+        gameActive = false;
+        return;
+      }
+
+      currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+      message.textContent = `Spieler ${currentPlayer} ist am Zug.`;
+    }
+
+    restartBtn.addEventListener('click', startGame);
+
+    startGame();
+  </script>
+</body>
+</html>

@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mensch ärgere dich nicht</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      background: #f0f0f0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 10px;
+      box-sizing: border-box;
+    }
+
+    h1 {
+      margin-bottom: 10px;
+      font-size: 6vw;
+      max-font-size: 28px;
+    }
+
+    #boardContainer {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    #board {
+      display: grid;
+      grid-template-columns: repeat(11, 1fr);
+      grid-template-rows: repeat(11, 1fr);
+      width: 90vw;
+      max-width: 420px;
+      aspect-ratio: 1 / 1;
+      background: #fff;
+      border: 2px solid #333;
+      box-sizing: border-box;
+    }
+
+    .field {
+      border: 1px solid #ddd;
+      box-sizing: border-box;
+      position: relative;
+    }
+
+    .field.main {
+      background: #eee;
+    }
+
+    .piece {
+      width: 70%;
+      height: 70%;
+      border-radius: 50%;
+      position: absolute;
+      top: 15%;
+      left: 15%;
+      border: 2px solid #333;
+      box-sizing: border-box;
+    }
+
+    .red   { background: #ff4d4d; }
+    .blue  { background: #4d79ff; }
+    .green { background: #4dff4d; }
+    .yellow{ background: #ffd84d; }
+
+    #info {
+      margin-top: 10px;
+      font-size: 4vw;
+      max-font-size: 18px;
+    }
+
+    .buttons {
+      margin-top: 10px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    button {
+      padding: 8px 14px;
+      font-size: 4vw;
+      max-font-size: 18px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      background: #007bff;
+      color: #fff;
+    }
+
+    button:hover {
+      background: #0056b3;
+    }
+
+    #diceResult {
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <h1>Mensch ärgere dich nicht</h1>
+
+  <div id="boardContainer">
+    <div id="board"></div>
+  </div>
+
+  <div id="info">
+    Spieler: <span id="currentPlayerLabel"></span> |
+    Gewürfelt: <span id="diceResult">-</span>
+  </div>
+
+  <div class="buttons">
+    <button id="rollDiceBtn">Würfeln</button>
+    <button id="restartBtn">Neustart</button>
+    <button onclick="location.href='index.html'">Zurück zur Auswahl</button>
+  </div>
+
+  <script>
+    // Sehr vereinfachtes Mensch-ärgere-dich-nicht:
+    // 4 Spieler, je 4 Figuren, alle ziehen auf derselben Gerät.
+    // Kein exakt offizielles Layout, aber ähnliche Logik.
+
+    const boardEl = document.getElementById('board');
+    const currentPlayerLabel = document.getElementById('currentPlayerLabel');
+    const diceResultEl = document.getElementById('diceResult');
+    const rollDiceBtn = document.getElementById('rollDiceBtn');
+    const restartBtn = document.getElementById('restartBtn');
+
+    const players = ['red', 'blue', 'green', 'yellow'];
+    let currentPlayerIndex = 0;
+    let dice = null;
+    let fields = []; // 11x11
+    let pieces = {};
+    let path = [];   // Hauptlaufweg
+
+    function createBoard() {
+      boardEl.innerHTML = '';
+      fields = [];
+      for (let i = 0; i < 121; i++) {
+        const div = document.createElement('div');
+        div.classList.add('field');
+        boardEl.appendChild(div);
+        fields.push(div);
+      }
+
+      // Ein sehr einfacher, rechteckiger Pfad: außen im Quadrat
+      // Indizes der 11x11 Felder:
+      // Reihe r, Spalte c -> index = r*11 + c
+      function idx(r, c) { return r * 11 + c; }
+
+      path = [];
+      // oben links nach rechts
+      for (let c = 0; c < 11; c++) path.push(idx(0, c));
+      // rechts oben nach unten (ohne Ecke doppeln)
+      for (let r = 1; r < 11; r++) path.push(idx(r, 10));
+      // unten rechts nach links
+      for (let c = 9; c >= 0; c--) path.push(idx(10, c));
+      // links unten nach oben
+      for (let r = 9; r > 0; r--) path.push(idx(r, 0));
+
+      path.forEach(i => fields[i].classList.add('main'));
+    }
+
+    function initPieces() {
+      pieces = {};
+      players.forEach(color => {
+        pieces[color] = [];
+        for (let i = 0; i < 4; i++) {
+          pieces[color].push({
+            position: -1, // -1 = Start (Haus), >=0 = Index im path, >= path.length = im Ziel (vereinfacht)
+            element: null
+          });
+        }
+      });
+      renderPieces();
+    }
+
+    function renderPieces() {
+      // Erst alle Figuren löschen
+      fields.forEach(f => {
+        const child = f.querySelector('.piece');
+        if (child) f.removeChild(child);
+      });
+
+      // Für jede Figur neu platzieren
+      players.forEach(color => {
+        pieces[color].forEach((p, i) => {
+          if (p.position >= 0 && p.position < path.length) {
+            const fieldIndex = path[p.position];
+            const field = fields[fieldIndex];
+            const div = document.createElement('div');
+            div.classList.add('piece', color);
+            div.dataset.color = color;
+            div.dataset.index = i;
+            field.appendChild(div);
+            p.element = div;
+          } else {
+            p.element = null;
+          }
+        });
+      });
+    }
+
+    function nextPlayer() {
+      currentPlayerIndex = (currentPlayerIndex + 1) % players.length;
+      updateInfo();
+    }
+
+    function updateInfo() {
+      currentPlayerLabel.textContent = players[currentPlayerIndex];
+    }
+
+    function rollDice() {
+      dice = Math.floor(Math.random() * 6) + 1;
+      diceResultEl.textContent = dice;
+    }
+
+    function onFieldClick(e) {
+      const pieceDiv = e.target.closest('.piece');
+      if (!pieceDiv) return;
+      const color = pieceDiv.dataset.color;
+      const index = Number(pieceDiv.dataset.index);
+      const currentColor = players[currentPlayerIndex];
+      if (color !== currentColor) return; // nur eigene Figuren
+
+      if (!dice) return; // erst würfeln
+
+      const p = pieces[color][index];
+      // Sehr vereinfachte Logik:
+      // - Wenn Figur im Haus (-1) und Wurf >= 1: Figur auf Startfeld setzen
+      // - Sonst: Ziehen um 'dice' Felder, ggf. gegnerische Figur schlagen
+      if (p.position === -1) {
+        p.position = startIndexFor(color);
+      } else {
+        p.position += dice;
+        if (p.position >= path.length) {
+          p.position = path.length; // "im Ziel", wir halten es einfach
+        }
+      }
+
+      // Gegner schlagen, wenn auf gleichem Feld
+      players.forEach(col => {
+        if (col === color) return;
+        pieces[col].forEach(other => {
+          if (other.position === p.position && p.position < path.length && p.position >= 0) {
+            other.position = -1; // zurück ins Haus
+          }
+        });
+      });
+
+      dice = null;
+      diceResultEl.textContent = '-';
+      renderPieces();
+
+      if (checkWin(color)) {
+        alert('Spieler ' + color + ' hat gewonnen!');
+        return;
+      }
+
+      nextPlayer();
+    }
+
+    function startIndexFor(color) {
+      // Einfach vier Startpositionen an verschiedenen Stellen auf dem Pfad
+      if (color === 'red')   return 0;
+      if (color === 'blue')  return Math.floor(path.length * 0.25);
+      if (color === 'green') return Math.floor(path.length * 0.5);
+      if (color === 'yellow')return Math.floor(path.length * 0.75);
+      return 0;
+    }
+
+    function checkWin(color) {
+      // Einfach: gewonnen, wenn alle Figuren am Ende des Pfads oder darüber
+      return pieces[color].every(p => p.position >= path.length);
+    }
+
+    function restart() {
+      dice = null;
+      diceResultEl.textContent = '-';
+      currentPlayerIndex = 0;
+      updateInfo();
+      initPieces();
+    }
+
+    boardEl.addEventListener('click', onFieldClick);
+    rollDiceBtn.addEventListener('click', () => {
+      if (!dice) rollDice();
+    });
+    restartBtn.addEventListener('click', restart);
+
+    function init() {
+      createBoard();
+      initPieces();
+      currentPlayerIndex = 0;
+      updateInfo();
+      dice = null;
+      diceResultEl.textContent = '-';
+    }
+
+    init();
+  </script>
+</body>
+</html>
